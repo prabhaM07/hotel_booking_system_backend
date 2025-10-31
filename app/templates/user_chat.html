@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>User Chat</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin:0; height:100vh; display:flex; flex-direction:column; background:#fafafa; }
+    header { padding:10px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; background:white; }
+    .chat-area { flex:1; padding:10px; overflow-y:auto; display:flex; flex-direction:column; }
+    .msg { margin:6px 0; max-width:65%; padding:8px; border-radius:8px; background:white; position:relative; }
+    .msg.me { align-self:flex-end; border:1px solid #bbb; background:#dcf8c6; }
+    .msg.they { align-self:flex-start; border:1px solid #ccc; }
+    .meta { font-size:12px; color:#666; }
+    .tick { font-size:11px; margin-left:4px; color:gray; }
+    .tick.seen { color:#2196f3; }
+    .input-row { display:flex; padding:8px; border-top:1px solid #ddd; background:white; }
+    .input-row input { flex:1; padding:8px; }
+    .status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:5px; }
+    .online { background-color:#4caf50; }
+    .offline { background-color:#f44336; }
+    .admin-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    
+    .date-separator {
+      text-align: center;
+      margin: 20px 0 15px 0;
+      position: relative;
+      width: 100%;
+      align-self: center;
+    }
+    .date-separator-line {
+      border-top: 1px solid #ddd;
+      position: absolute;
+      width: 100%;
+      top: 50%;
+      left: 0;
+      z-index: 1;
+    }
+    .date-separator-text {
+      background: #fafafa;
+      padding: 4px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #666;
+      display: inline-block;
+      position: relative;
+      z-index: 2;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>Chat with Admin</strong></div>
+    <div class="admin-status">
+      <span id="adminStatusDot" class="status-dot offline"></span>
+      <span id="adminStatusText">Admin offline</span>
+    </div>
+  </header>
+
+  <div class="chat-area" id="chatArea"></div>
+
+  <div class="input-row">
+    <input id="messageInput" placeholder="Type a message..." />
+    <button id="sendBtn">Send</button>
+  </div>
+
+<script>
+(async function(){
+  const wsUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/Query/ws/';
+  const ws = new WebSocket(wsUrl);
+  const chatArea = document.getElementById('chatArea');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const adminStatusDot = document.getElementById('adminStatusDot');
+  const adminStatusText = document.getElementById('adminStatusText');
+
+  let myDetail = null;
+  let messages = [];
+
+  async function fetchUserDetail(){
+    const res = await fetch('/Query/user/detail', { credentials: 'include' });
+    if (res.ok) myDetail = await res.json();
+  }
+
+  await fetchUserDetail();
+
+  async function checkAdminOnline() {
+    try {
+      const res = await fetch('/Query/user/online', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      
+      if (data.admin_online !== undefined) {
+        updateAdminStatus(data.admin_online);
+        return;
+      }
+      
+      const adminOnline = data.users && Object.values(data.users).some(u => u.role && u.role.toLowerCase() === 'admin');
+      updateAdminStatus(adminOnline);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  }
+
+  function updateAdminStatus(isOnline) {
+    if (isOnline) {
+      adminStatusDot.className = 'status-dot online';
+      adminStatusText.textContent = 'Admin online';
+    } else {
+      adminStatusDot.className = 'status-dot offline';
+      adminStatusText.textContent = 'Admin offline';
+    }
+  }
+
+  checkAdminOnline();
+  setInterval(checkAdminOnline, 5000);
+
+  ws.onopen = () => console.log("✅ WebSocket connected");
+  ws.onclose = () => console.log("❌ WebSocket disconnected");
+
+  ws.onmessage = (event) => {
+    const payload = JSON.parse(event.data);
+    
+    if (payload.type === 'chat_history') {
+      messages = payload.data || [];
+      renderMessages();
+    } else if (payload.type === 'message') {
+      messages.push(payload);
+      renderMessages();
+      if (payload.sender_role !== 'user') markAllAsSeen();
+    } else if (payload.type === 'message_seen') {
+      markSeenMessages(payload.message_ids || []);
+    } else if (payload.type === 'online_users') {
+      const users = payload.users || {};
+      const adminOnline = Object.values(users).some(u => u.role && u.role.toLowerCase() === 'admin');
+      updateAdminStatus(adminOnline);
+    }
+  };
+
+  function getDateLabel(dateObj) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const msgDate = new Date(dateObj);
+    msgDate.setHours(0, 0, 0, 0);
+    
+    if (msgDate.getTime() === today.getTime()) {
+      return 'Today';
+    } else if (msgDate.getTime() === yesterday.getTime()) {
+      return 'Yesterday';
+    } else {
+      return msgDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+  }
+
+  function renderMessages() {
+    chatArea.innerHTML = '';
+    let lastDateLabel = null;
+    
+    messages.forEach(m => {
+      try {
+        const msgDate = new Date(m.timestamp);
+        const dateLabel = getDateLabel(msgDate);
+        
+        if (dateLabel !== lastDateLabel) {
+          const dateSep = document.createElement('div');
+          dateSep.className = 'date-separator';
+          
+          const line = document.createElement('div');
+          line.className = 'date-separator-line';
+          
+          const text = document.createElement('span');
+          text.className = 'date-separator-text';
+          text.textContent = dateLabel;
+          
+          dateSep.appendChild(line);
+          dateSep.appendChild(text);
+          chatArea.appendChild(dateSep);
+          
+          lastDateLabel = dateLabel;
+        }
+      } catch (e) {
+        console.error('Error parsing date:', e);
+      }
+      
+      const div = document.createElement('div');
+      div.className = 'msg ' + (m.sender_role === 'user' ? 'me' : 'they');
+      div.dataset.msgid = m._id || '';
+      
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      
+      try {
+        const msgDate = new Date(m.timestamp);
+        const timeStr = msgDate.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true
+        });
+        meta.textContent = `${m.sender_role} • ${timeStr}`;
+      } catch {
+        meta.textContent = `${m.sender_role}`;
+      }
+      
+      const tick = document.createElement('span');
+      tick.className = 'tick' + (m.seen ? ' seen' : '');
+      tick.textContent = '✔✔';
+      if (m.sender_role === 'user') meta.appendChild(tick);
+      
+      const body = document.createElement('div');
+      body.textContent = m.message;
+      
+      div.appendChild(meta);
+      div.appendChild(body);
+      chatArea.appendChild(div);
+    });
+    
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function markSeenMessages(ids){
+    ids.forEach(id => {
+      const el = document.querySelector(`[data-msgid="${id}"] .tick`);
+      if (el) el.classList.add('seen');
+    });
+  }
+
+  async function markAllAsSeen(){
+    if (!messages.length) return;
+    const last = messages[messages.length - 1];
+    await fetch('/Query/read', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ peer_id: 0, max_timestamp: last.timestamp })
+    });
+  }
+
+  sendBtn.onclick = () => {
+    const text = messageInput.value.trim();
+    if (!text) return;
+    const payload = {
+      message: text,
+      sender_username: myDetail?.email || 'user'
+    };
+    ws.send(JSON.stringify(payload));
+    messageInput.value = '';
+  };
+
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendBtn.onclick();
+  });
+})();
+</script>
+</body>
+</html>

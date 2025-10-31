@@ -1,0 +1,405 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Chat</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin:0; height:100vh; display:flex; }
+    .sidebar { width:320px; border-right:1px solid #ddd; padding:10px; overflow:auto; background:#f9f9f9; }
+    .main { flex:1; display:flex; flex-direction:column; }
+    .chat-area { flex:1; padding:10px; overflow:auto; background:#fafafa; }
+    .msg { margin:6px 0; max-width:65%; padding:8px; border-radius:8px; background:white; }
+    .msg.me { align-self:flex-end; background:#dcf8c6; border:1px solid #bbb; }
+    .msg.they { align-self:flex-start; border:1px solid #ccc; }
+    .input-row { display:flex; padding:8px; border-top:1px solid #ddd; background:white; }
+    .input-row input { flex:1; padding:8px; }
+    .meta { font-size:12px; color:#666; }
+    .tick { font-size:11px; margin-left:4px; color:gray; }
+    .tick.seen { color:#2196f3; }
+    
+    .date-separator {
+      text-align: center;
+      margin: 20px 0 15px 0;
+      position: relative;
+    }
+    .date-separator-line {
+      border-top: 1px solid #ddd;
+      position: absolute;
+      width: 100%;
+      top: 50%;
+      left: 0;
+      z-index: 1;
+    }
+    .date-separator-text {
+      background: #fafafa;
+      padding: 4px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #666;
+      display: inline-block;
+      position: relative;
+      z-index: 2;
+      font-weight: 500;
+    }
+    
+    .user-item {
+      padding: 12px;
+      margin: 6px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      background: white;
+      border: 1px solid #e0e0e0;
+      transition: all 0.2s;
+    }
+    .user-item:hover { background: #f0f0f0; }
+    .user-item.selected { background: #e3f2fd; border-color: #2196f3; }
+    .user-item.active { border-left: 4px solid #4caf50; }
+    .user-item.offline { opacity: 0.7; }
+    
+    .user-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .user-name {
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .online-dot { background-color: #4caf50; }
+    .offline-dot { background-color: #999; }
+    
+    .unseen-badge {
+      background: #ff5252;
+      color: white;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .last-message {
+      font-size: 13px;
+      color: #666;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 4px;
+    }
+    .last-time {
+      font-size: 11px;
+      color: #999;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3>Users</h3>
+    <div id="userList">Loading...</div>
+  </div>
+  <div class="main">
+    <div style="padding:10px; border-bottom:1px solid #ddd;">
+      <strong>Admin Console</strong>
+      <span id="selectedUserInfo" style="margin-left:20px; color:#666;"></span>
+    </div>
+    <div class="chat-area" id="chatArea"></div>
+    <div class="input-row">
+      <input id="messageInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+  <script>
+  (function(){
+    const wsUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/Query/ws/';
+    const ws = new WebSocket(wsUrl);
+    const userList = document.getElementById('userList');
+    const chatArea = document.getElementById('chatArea');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const selectedUserInfo = document.getElementById('selectedUserInfo');
+    
+    let selectedUser = null;
+    let myDetail = null;
+    let messagesByUser = {};
+    let allUsers = [];
+    let onlineUsers = {};
+
+    async function fetchUserDetail(){
+      const res = await fetch('/Query/user/detail', { credentials: 'include' });
+      if (res.ok) myDetail = await res.json();
+    }
+
+    async function loadAllUsers(){
+      const res = await fetch('/Query/user/all', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        allUsers = data.data || [];
+        renderUserList();
+      }
+    }
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'message') {
+        onMessage(data);
+      } else if (data.type === 'message_seen') {
+        markSeenMessages(data.message_ids || []);
+      } else if (data.type === 'online_users') {
+        updateOnlineStatus(data.users);
+      }
+    };
+
+    ws.onopen = () => {
+      console.log("✅ Admin connected");
+      loadAllUsers();
+    };
+
+    function updateOnlineStatus(users){
+      onlineUsers = users;
+      renderUserList();
+    }
+
+    function renderUserList(){
+      userList.innerHTML = '';
+      
+      if (!allUsers.length) {
+        userList.innerHTML = '<div style="padding:10px; color:#999;">No users yet</div>';
+        return;
+      }
+
+      allUsers.forEach(user => {
+        const uid = user.user_id;
+        const isOnline = onlineUsers[uid] !== undefined;
+        const unseenCount = user.unseen_count || 0;
+        
+        const div = document.createElement('div');
+        div.className = 'user-item' + (isOnline ? ' active' : ' offline') + (selectedUser == uid ? ' selected' : '');
+        
+        const header = document.createElement('div');
+        header.className = 'user-header';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'user-name';
+        
+        const statusDot = document.createElement('span');
+        statusDot.className = 'status-dot ' + (isOnline ? 'online-dot' : 'offline-dot');
+        
+        const nameText = document.createTextNode(`User ${uid}`);
+        
+        nameDiv.appendChild(statusDot);
+        nameDiv.appendChild(nameText);
+        header.appendChild(nameDiv);
+        
+        if (unseenCount > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'unseen-badge';
+          badge.textContent = unseenCount;
+          header.appendChild(badge);
+        }
+        
+        div.appendChild(header);
+        
+        if (user.last_message) {
+          const lastMsg = document.createElement('div');
+          lastMsg.className = 'last-message';
+          lastMsg.textContent = user.last_message;
+          div.appendChild(lastMsg);
+        }
+        
+        if (user.last_timestamp) {
+          const lastTime = document.createElement('div');
+          lastTime.className = 'last-time';
+          lastTime.textContent = formatTime(user.last_timestamp);
+          div.appendChild(lastTime);
+        }
+        
+        div.onclick = () => selectUser(uid);
+        userList.appendChild(div);
+      });
+    }
+
+    function formatTime(isoString){
+      try {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diff = now - date;
+        const mins = Math.floor(diff / 60000);
+        const hours = Math.floor(mins / 60);
+        const days = Math.floor(hours / 24);
+        
+        if (mins < 1) return 'Just now';
+        if (mins < 60) return `${mins}m ago`;
+        if (hours < 24) return `${hours}h ago`;
+        if (days < 7) return `${days}d ago`;
+        return date.toLocaleDateString();
+      } catch {
+        return '';
+      }
+    }
+
+    function getDateLabel(dateObj) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const msgDate = new Date(dateObj);
+      msgDate.setHours(0, 0, 0, 0);
+      
+      if (msgDate.getTime() === today.getTime()) {
+        return 'Today';
+      } else if (msgDate.getTime() === yesterday.getTime()) {
+        return 'Yesterday';
+      } else {
+        return msgDate.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+    }
+
+    async function selectUser(uid){
+      selectedUser = uid;
+      selectedUserInfo.textContent = `Chatting with User ${uid}`;
+      
+      const res = await fetch(`/Query/history/${uid}`, { credentials:'include' });
+      const data = await res.json();
+      messagesByUser[uid] = data.messages || [];
+      renderMessages(uid);
+      await markAllAsSeen(uid);
+      
+      loadAllUsers();
+      renderUserList();
+    }
+
+    function onMessage(m){
+      const uid = (m.sender_role === 'admin') ? m.receiver_id : m.sender_id;
+      messagesByUser[uid] = messagesByUser[uid] || [];
+      messagesByUser[uid].push(m);
+      
+      if (selectedUser == uid) {
+        renderMessages(uid);
+        markAllAsSeen(uid);
+      }
+      
+      loadAllUsers();
+    }
+
+    function renderMessages(uid){
+      chatArea.innerHTML = '';
+      const messages = messagesByUser[uid] || [];
+      
+      let lastDateLabel = null;
+      
+      messages.forEach(m => {
+        try {
+          const msgDate = new Date(m.timestamp);
+          const dateLabel = getDateLabel(msgDate);
+          
+          if (dateLabel !== lastDateLabel) {
+            const dateSep = document.createElement('div');
+            dateSep.className = 'date-separator';
+            
+            const line = document.createElement('div');
+            line.className = 'date-separator-line';
+            
+            const text = document.createElement('span');
+            text.className = 'date-separator-text';
+            text.textContent = dateLabel;
+            
+            dateSep.appendChild(line);
+            dateSep.appendChild(text);
+            chatArea.appendChild(dateSep);
+            
+            lastDateLabel = dateLabel;
+          }
+        } catch (e) {
+          console.error('Error parsing date:', e);
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'msg ' + (m.sender_role === 'admin' ? 'me' : 'they');
+        div.dataset.msgid = m._id;
+        
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        
+        try {
+          const msgDate = new Date(m.timestamp);
+          const timeStr = msgDate.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true
+          });
+          meta.textContent = `${m.sender_role} • ${timeStr}`;
+        } catch {
+          meta.textContent = `${m.sender_role}`;
+        }
+        
+        if (m.sender_role === 'admin') {
+          const tick = document.createElement('span');
+          tick.className = 'tick' + (m.seen ? ' seen' : '');
+          tick.textContent = '✔✔';
+          meta.appendChild(tick);
+        }
+        
+        const body = document.createElement('div');
+        body.textContent = m.message;
+        
+        div.appendChild(meta);
+        div.appendChild(body);
+        chatArea.appendChild(div);
+      });
+      
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function markSeenMessages(ids){
+      ids.forEach(id => {
+        const el = document.querySelector(`[data-msgid="${id}"] .tick`);
+        if (el) el.classList.add('seen');
+      });
+    }
+
+    async function markAllAsSeen(uid){
+      const msgs = messagesByUser[uid] || [];
+      if (!msgs.length) return;
+      const last = msgs[msgs.length - 1];
+      await fetch('/Query/read', {
+        method:'POST',
+        credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ peer_id: uid, max_timestamp: last.timestamp })
+      });
+    }
+
+    sendBtn.onclick = () => {
+      const text = input.value.trim();
+      if (!text || !selectedUser) return;
+      ws.send(JSON.stringify({
+        message: text,
+        receiver_id: selectedUser,
+        sender_username: myDetail?.email || 'admin'
+      }));
+      input.value = '';
+    };
+
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendBtn.onclick();
+    });
+
+    fetchUserDetail();
+  })();
+  </script>
+</body>
+</html>

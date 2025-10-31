@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile</title>
+</head>
+<body>
+    <h2>User Profile Image</h2>
+    {% if image_path %}
+        <img src="{{ image_path }}" alt="Profile Image" width="200" height="200">
+    {% else %}
+        <p>No profile image found.</p>
+    {% endif %}
+</body>
+</html>
