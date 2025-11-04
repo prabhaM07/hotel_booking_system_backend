@@ -9,6 +9,8 @@ from app.models.Enum import RoomStatusEnum,BookingStatusEnum
 from app.models.bookings import Bookings
 from app.models.rooms import Rooms
 from app.models.room_type import RoomTypeWithSize
+from sqlalchemy.exc import SQLAlchemyError
+
 
 def check_availability(model: Type, db: Session,**kwargs):
     room_id = kwargs.get('room_id')
@@ -61,31 +63,46 @@ def available_date_of_room(room_id : int,model: Type, db: Session):
         "to": str(future_limit),
         "available_dates": [str(d) for d in available_dates]
     }
-    
-#-------------------- AVAILABLE ROOMS ----------------------
-def available_rooms(db: Session,check_in : date,check_out :date,no_of_child : int,no_of_adult :int):
-  
-    booked_room = (db.query(Bookings)
-    .join(Rooms,Bookings.room_id == Rooms.id)
-    .join(RoomTypeWithSize,Rooms.room_type_id == RoomTypeWithSize.id)
-    .filter(
-        check_in < check_out,
-        check_out > check_in,
-        no_of_adult >= no_of_adult,
-        no_of_child >= no_of_child
-    )
-    .distinct()
-    .all()
-    )
-    
-    booked_room_ids = [r[0] for r in booked_room]
+      
 
-    available_rooms = db.query(Rooms).filter(Rooms.id.notin_(booked_room_ids)).all()
-        
-    return {
-        "available_rooms": [room.id for room in available_rooms],
-        "count": len(available_rooms)
-    }
-    
+#-------------------- AVAILABLE ROOMS ----------------------
+def available_rooms(db: Session, check_in: date, check_out: date, no_of_child: int, no_of_adult: int):
+    try:
+        if check_in >= check_out:
+            raise HTTPException(status_code=400, detail="Invalid date range")
+
+        # Find booked rooms in the given period
+        booked_room = (
+            db.query(Bookings)
+            .join(Rooms, Bookings.room_id == Rooms.id)
+            .join(RoomTypeWithSize, Rooms.room_type_id == RoomTypeWithSize.id)
+            .filter(
+                Bookings.check_in < check_out,
+                Bookings.check_out > check_in,
+                RoomTypeWithSize.no_of_adult >= no_of_adult,
+                RoomTypeWithSize.no_of_child >= no_of_child
+            )
+            .distinct()
+            .all()
+        )
+
+        # Safely extract room IDs
+        booked_room_ids = [r.room_id for r in booked_room]
+
+        # Fetch rooms not booked in that range
+        available_rooms_list = db.query(Rooms).filter(Rooms.id.notin_(booked_room_ids)).all()
+
+        return {
+            "available_rooms": [room.id for room in available_rooms_list],
+            "count": len(available_rooms_list)
+        }
+
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
     
     
