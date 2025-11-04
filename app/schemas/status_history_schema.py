@@ -22,7 +22,6 @@ class PaymentStatusHistoryBase(BaseModel):
     payment_id: int = Field(..., gt=0, description="Associated payment ID, must be positive")
     old_status: str = Field(..., min_length=3, max_length=50, description="Previous payment status")
     new_status: str = Field(..., min_length=3, max_length=50, description="New payment status")
-    changed_by: Optional[int] = Field(None, gt=0, description="User ID who changed the status")
 
     @validator("new_status", "old_status")
     def validate_status(cls, v):
@@ -37,7 +36,6 @@ class BookingStatusHistoryBase(BaseModel):
     booking_id: int = Field(..., gt=0, description="Associated booking ID, must be positive")
     old_status: str = Field(..., min_length=3, max_length=50, description="Previous booking status")
     new_status: str = Field(..., min_length=3, max_length=50, description="New booking status")
-    changed_by: Optional[int] = Field(None, gt=0, description="User ID who changed the status")
 
     @validator("new_status", "old_status")
     def validate_status(cls, v):

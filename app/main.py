@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.database_postgres import init_db
-from app.routes import users,userQueryChat,generalQuery,feature,room_type_with_size,bed_type,floor,room
+from app.routes import users,userQueryChat,generalQuery,feature,room_type_with_size,bed_type,floor,room,addon,booking
 
 
 # Create FastAPI instance
@@ -42,8 +42,10 @@ application.include_router(users.router)
 application.include_router(feature.router)
 application.include_router(bed_type.router)
 application.include_router(floor.router)
+application.include_router(addon.router)
 application.include_router(room_type_with_size.router)
 application.include_router(room.router)
+application.include_router(booking.router)
 application.include_router(userQueryChat.router)
 application.include_router(generalQuery.router)
 

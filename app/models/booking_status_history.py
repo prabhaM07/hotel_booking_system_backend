@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
 
 class BookingStatusHistory(Base):
-    __tablename__ = "Booking_Status_History"
+    __tablename__ = "booking_status_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     booking_id = Column(
@@ -21,8 +21,7 @@ class BookingStatusHistory(Base):
         String(50),
         nullable=False
     )
-    changed_by = Column(Integer, ForeignKey("user.id"), nullable=True)
-
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -33,13 +32,7 @@ class BookingStatusHistory(Base):
 
     booking = relationship(
         "Bookings",
-        back_populates="status_history",  
-        lazy='joined'
-    )
-    
-    user = relationship(
-        "User",
-        back_populates="status_history_booking",  
+        back_populates="booking_status_history",  
         lazy='joined'
     )
     

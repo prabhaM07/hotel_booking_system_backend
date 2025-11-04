@@ -26,7 +26,7 @@ class Rooms(Base):
         nullable=False,
         default="available"
     )
-    
+        
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -53,7 +53,7 @@ class Rooms(Base):
         lazy='joined'
     )
 
-    status_history = relationship(
+    room_status_history = relationship(
         "RoomStatusHistory",
         back_populates="room",
         lazy='joined'

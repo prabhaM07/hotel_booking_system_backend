@@ -7,9 +7,14 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
-    phone_no: int
+    phone_no: str
     role: Literal["user", "admin"] 
     
+
+from pydantic import BaseModel, Field, EmailStr, field_validator
+from typing import Literal
+import re
+
 class UserBase(BaseModel):
     first_name: str = Field(
         ...,
@@ -31,7 +36,7 @@ class UserBase(BaseModel):
     )
     
     role: Literal["user", "admin"] = Field(
-        default="user",  # Set default role
+        default="user",
         description="Role of the user. Can be either 'user' or 'admin'.",
         example="user"
     )
@@ -43,11 +48,11 @@ class UserBase(BaseModel):
         example="John@123"
     )
     
-    phone_no: int = Field(
+    phone_no: str = Field(
         ...,
         alias="phoneNo",
         description="10-digit mobile number (should not start with 0).",
-        example=9876543210
+        example="9876543210"
     )
 
     # Validators
@@ -62,7 +67,8 @@ class UserBase(BaseModel):
 
     @field_validator("phone_no")
     def validate_phone(cls, v):
-        if v < 1000000000 or v > 9999999999:
+        v = v.strip()
+        if not re.fullmatch(r"^[1-9][0-9]{9}$", v):
             raise ValueError("Enter a valid 10-digit phone number (should not start with 0).")
         return v
 

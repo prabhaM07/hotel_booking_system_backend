@@ -27,6 +27,7 @@ class RoomsBase(BaseModel):
         description="Room number (1-9999, must be unique).",
         example=101
     )
+    
     status: Optional[str] = None
 
     # Validators
@@ -38,7 +39,7 @@ class RoomsBase(BaseModel):
 
     @field_validator("floor_id")
     def validate_floor_id(cls, v):
-        if v <= 0:
+        if v < 0:
             raise ValueError("Floor ID must be a positive integer.")
         return v
 

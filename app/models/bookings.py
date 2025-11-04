@@ -25,12 +25,12 @@ class Bookings(Base):
     booking_status = Column(
         SQLEnum(BookingStatusEnum, name="booking_status_enum", create_type=False),
         nullable=False,
-        default=BookingStatusEnum.PENDING
+        default=BookingStatusEnum.PENDING.value
     )
     payment_status = Column(
         SQLEnum(PaymentStatusEnum, name="payment_status_enum", create_type=False),
         nullable=False,
-        default=PaymentStatusEnum.PAID
+        default=PaymentStatusEnum.PAID.value
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
@@ -55,39 +55,29 @@ class Bookings(Base):
     
     booking_addons = relationship(
         "BookingAddon",
-        back_populates="booking",
+        back_populates="bookings",
         lazy='joined',
         cascade="all, delete-orphan"
     )
     
-    payment_history = relationship(
-        "PaymentStatusHistory",
-        back_populates="booking",
-        lazy='joined',
-        cascade="all, delete-orphan"
-    )
-    
-    status_history = relationship(
+    booking_status_history = relationship(
         "BookingStatusHistory",
         back_populates="booking",
         lazy='joined',
         cascade="all, delete-orphan"
     )
     
+    payment = relationship(
+        "Payments",
+        back_populates="booking",
+        lazy='joined'
+    )
+    
     # Reschedule relationships
     reschedules = relationship(
         "Reschedule",
-        foreign_keys="[Reschedule.booking_id]",
-        back_populates="original_booking",
-        lazy='select',
-        cascade="all, delete-orphan"
-    )
-    
-    new_reschedules = relationship(
-        "Reschedule",
-        foreign_keys="[Reschedule.new_booking_id]",
-        back_populates="rescheduled_booking",
-        lazy='select',
+        back_populates="booking",
+        lazy='joined',
         cascade="all, delete-orphan"
     )
 

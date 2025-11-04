@@ -10,7 +10,6 @@ class BookingStatusEnum(str, enum.Enum):
 
 class PaymentStatusEnum(str, enum.Enum):
     """Enum for payment status values"""
-    PENDING = "pending" # Payment started but not yet completed
     PAID = "paid" # Payment successfully received
     REFUNDED = "refunded" # Payment returned to guest
     FAILED = "failed" # Payment attempt failed
@@ -19,7 +18,11 @@ class PaymentStatusEnum(str, enum.Enum):
 class RoomStatusEnum(str, enum.Enum):
     """Enum for room status values"""
     AVAILABLE = "available"       # Room is clean, unoccupied, and ready for booking
-    OCCUPIED = "occupied"         # Guest is currently staying in the room
-    RESERVED = "reserved"         # Room is booked for a future date
     MAINTENANCE = "maintenance"   # Room is under repair and not bookable
 
+
+class RefundStatusEnum(str, enum.Enum):
+    """Enum for refund status values"""
+    APPROVED = "approved"             # Refund request approved by admin
+    REJECTED = "rejected"             # Refund request denied
+    COMPLETED = "completed"           # Refund has been successfully completed

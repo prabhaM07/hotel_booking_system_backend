@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.room_status_history import RoomStatusHistory
 from app.schemas.rooms_schema import RoomsBase
 from app.core.dependency import get_db, get_current_user
-from app.crud.common_crud import upsert_records, delete_records, get_records
+from app.crud.generic_crud import insert_record,update_record,get_record,get_record_by_id,delete_record
 from app.schemas.status_history_schema import RoomStatusHistoryBase
 router = APIRouter(prefix="/room", tags=["Rooms"])
 
@@ -28,13 +28,13 @@ async def add_room(
         room_no=room_no,
         status=RoomStatusEnum("available"),
     )
-    room_data = await upsert_records(db=db, model=Rooms, data=room_base)
+    room_data = await insert_record(db=db, model=Rooms, **room_base.model_dump())
     return room_data
 
 
 @router.post("/update")
 async def update_room(
-    id: int = Form(...),
+    room_id: int = Form(...),
     room_type_id: Optional[int] = Form(None),
     floor_id: Optional[int] = Form(None),
     room_no: Optional[int] = Form(None),
@@ -44,17 +44,20 @@ async def update_room(
 ):
     """Update room details"""
     # Step 1: Fetch existing room
-    existing_room = db.query(Rooms).filter(Rooms.id == id).first()
+    existing_room = await get_record_by_id(model = Rooms,db = db,id = room_id)
+    update_data = {}
     if not existing_room:
         raise HTTPException(status_code=404, detail="Room not found")
     
-    if status:
+    old_status = existing_room.status
+    if status != "string":
         try:
             # Convert to lowercase and validate against the Enum
-            old_status = existing_room.status
+            
             new_status = RoomStatusEnum(status.lower()) if status else old_status
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid room status: {status}")
+        update_data["status"] = new_status
     else:
         new_status = existing_room.status
         
@@ -62,35 +65,32 @@ async def update_room(
         history_entry = RoomStatusHistoryBase(
             room_id=id,
             old_status=old_status,
-            new_status=new_status,
-            changed_by=current_user.id,
+            new_status=new_status
         )
-        await upsert_records(db=db, model=RoomStatusHistory, data=history_entry)
-        
-    room_base = RoomsBase(
-        id=id,
-        room_type_id=room_type_id,
-        floor_id=floor_id,
-        room_no=room_no,
-        status=new_status,
-    )
+        await insert_record(db=db, model=RoomStatusHistory, **history_entry.model_dump())
+    
+    if floor_id > 0:
+      update_data["floor_id"] = floor_id
+    if room_type_id > 0:
+      update_data["room_type_id"] = room_type_id
+    if room_no > 0:
+      update_data["room_no"] = room_no
     
     # Step 4: Update the room record
     
-    room_data = await upsert_records(db=db, model=Rooms, data=room_base,id = room_base.id)
-    
-
+    room_data = await update_record(id=id,db=db, model=Rooms,**update_data)
+  
     return room_data
 
 
 @router.delete("/delete")
 async def delete_room(
-    id: int = Form(...),
+    room_id: int = Form(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     
-    deleted_data = await delete_records(db=db, model=Rooms, id=id)
+    deleted_data = await delete_record(db=db, model=Rooms, id=room_id)
     return deleted_data
 
 
@@ -111,4 +111,6 @@ async def get_room(
     if status is not None:
         filters["status"] = status
 
-    return await get_records(db=db, model=Rooms, **filters)
+    return await get_record(db=db, model=Rooms, **filters)
+
+

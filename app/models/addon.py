@@ -4,12 +4,13 @@ from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
 
 
-class Addon(Base):
-    __tablename__ = "Addon"
+class Addons(Base):
+    __tablename__ = "addons"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     addon_name = Column(String(100), nullable=False, unique=True)
-    price = Column(Integer, nullable=False)
+    image = Column(String, nullable=True)
+    base_price = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -21,7 +22,7 @@ class Addon(Base):
     # Relationship with BookingAddon
     booking_addons = relationship(
         "BookingAddon",
-        back_populates="addon",
+        back_populates="addons",
         lazy='select'
     )
 
@@ -31,7 +32,7 @@ class Addon(Base):
             name="check_addon_name_length"
         ),
         CheckConstraint(
-            "price > 0 AND price <= 100000",
+            "base_price > 0 AND base_price <= 100000",
             name="check_price_range"
         ),
     )

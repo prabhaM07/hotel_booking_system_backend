@@ -5,7 +5,7 @@ from app.core.database_postgres import Base
 
 
 class BookingAddon(Base):
-    __tablename__ = "Booking_Addon"
+    __tablename__ = "booking_addon"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     booking_id = Column(
@@ -15,20 +15,20 @@ class BookingAddon(Base):
     )
     addon_id = Column(
         Integer,
-        ForeignKey("Addon.id", ondelete="CASCADE"),
+        ForeignKey("addons.id", ondelete="CASCADE"),
         nullable=False
     )
     quantity = Column(Integer, nullable=False, default=1)
 
     # Relationships
-    booking = relationship(
+    bookings = relationship(
         "Bookings",
         back_populates="booking_addons",
         lazy='joined'
     )
     
-    addon = relationship(
-        "Addon",
+    addons = relationship(
+        "Addons",
         back_populates="booking_addons",
         lazy='joined'
     )

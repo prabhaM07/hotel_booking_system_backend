@@ -20,7 +20,7 @@ from app.models.scope import Scopes
 from app.models.bed_type import BedType
 from app.models.features import Feature
 from app.models.floor import Floor
-from app.models.addon import Addon
+from app.models.addon import Addons
 
 # ============================================
 # RoomTypeWithSize must come AFTER room_type_feature
@@ -50,14 +50,25 @@ from app.models.room_status_history import RoomStatusHistory
 from app.models.bookings import Bookings
 
 # ============================================
+# Bookings depends on User and Rooms
+# ============================================
+from app.models.payment import Payments
+
+
+from app.models.refund import Refunds
+# ============================================
 # PaymentStatus depends on Bookings - MOVED AFTER Bookings
 # ============================================
+
 from app.models.payment_status_history import PaymentStatusHistory
 
 # ============================================
 # BookingStatusHistory depends on Bookings
 # ============================================
 from app.models.booking_status_history import BookingStatusHistory
+
+
+from app.models.refund_status_history import RefundStatusHistory
 
 # ============================================
 # Profile depends on User
@@ -79,22 +90,26 @@ __all__ = [
     "RoomStatusEnum",
     # Association tables
     "room_type_feature",
+    "role_scope",
     # Independent models
     "Role",
     "Scopes",
     "BedType",
     "Feature",
     "Floor",
-    "Addon",
+    "Addons",
     # Core models in dependency order
     "RoomTypeWithSize",
     "User",
     "Rooms",
     "Bookings",
+    "Payments",
+    "Refunds",
     "PaymentStatus",
     "BookingStatusHistory",
     "PaymentStatusHistory",
-    "RoomStatusHistory", 
+    "RoomStatusHistory",
+    "RefundStatusHistory",
     "Profile",
     # Junction tables
     "RoomTypeBedType",

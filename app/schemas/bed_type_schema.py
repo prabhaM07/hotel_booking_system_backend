@@ -25,7 +25,7 @@ class BedTypeSchema(BaseModel):
         """
         if not re.match(r"^[A-Za-z\s]+$", v.strip()):
             raise ValueError("Bed type name must contain only letters and spaces.")
-        return v.strip().title()
+        return v.strip()
 
     class Config:
         from_attributes = True  

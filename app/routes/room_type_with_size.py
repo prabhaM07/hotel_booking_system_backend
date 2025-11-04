@@ -5,9 +5,12 @@ from app.core.dependency import get_db
 from app.core.dependency import get_current_user
 from app.models.user import User
 from app.models.room_type import RoomTypeWithSize
+from app.models.bed_type import BedType
+from app.models.features import Feature
+from app.models.roomType_bedType import RoomTypeBedType
 from app.schemas.room_type_schema import  RoomTypeResponse
-from app.crud.common_crud import upsert_records, delete_records, get_records
-from app.crud.room_type_with_size import update_Room_Type_Feature,update_Room_Type_Bed_Type
+from app.models.associations import room_type_feature
+from app.crud.generic_crud import insert_record, delete_record, get_record, save_images,get_record_by_id,update_record,commit_db
 
 router = APIRouter(prefix="/roomtype", tags=["Room Types"])
 
@@ -17,8 +20,8 @@ async def add_room_type(
     base_price_per_night: int = Form(...),
     no_of_adult: int = Form(...),
     no_of_child: int = Form(...),
-    features : Optional[List[str]] = Form(...),
-    bed_types_with_count : Optional[List[str]] = Form(...),
+    feature_ids : Optional[List[str]] = Form(...),
+    bed_type_id_with_count : Optional[List[str]] = Form(...),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -26,37 +29,62 @@ async def add_room_type(
     """
     Add a new room type with one or more images.
     """
+    image_urls = []
+    if images:
+        sub_static_dir="feature_images"
+        image_urls = await save_images(images,sub_static_dir)
+        room_type_data = RoomTypeResponse(
+        room_name = room_name,
+        base_price = base_price_per_night,
+        no_of_adult = no_of_adult,
+        no_of_child = no_of_child,
+        )
     
-    room_type_data = RoomTypeResponse(
-      room_name = room_name,
-      base_price = base_price_per_night,
-      no_of_adult = no_of_adult,
-      no_of_child = no_of_child
-    )
-    
-    bed_types = {}
-    
-    for btwc in bed_types_with_count:
-        
-        typee, count = btwc.split(":")
-        count = int(count)
-        
-        bed_types[typee] = count
-
-
-    data = await upsert_records(
-        db=db,
+    data = await insert_record(
         model=RoomTypeWithSize,
-        data=room_type_data,
-        image=images,   
-        path="room_type_images"
+        db=db,
+        **room_type_data.model_dump(),
+        images = image_urls
     )
     
-    await update_Room_Type_Feature(db,data.id,features)
-    await update_Room_Type_Bed_Type(db,data.id,bed_types)
-    
-    return data
+    if bed_type_id_with_count:
+        room_type_bed_type = []
+        for btwc in bed_type_id_with_count:
+            
+            dicts = {}
+            bed_type_id, count = btwc.split(":")
+            
+            count = int(count)
+            
+            bed_type_instance = await get_record(db = db,model = BedType,id = int(bed_type_id))
+            
+            if not bed_type_instance:
+                raise HTTPException(status_code=404, detail="Bed type not found")
+            
+            dicts["bed_type_id"] = bed_type_instance.id
+            dicts["num_of_beds"] = count
+            dicts["room_type_id"] = data.id
+            
+            room_type_bed_type.append(dicts)
+        
+    if feature_ids:  
+        feature_ids = feature_ids[0].split(',')
+        
+        for feature_id in feature_ids:
+            print(feature_id)
+            feature_instance = await get_record(db = db,model = Feature,id = int(feature_id))
+            
+            if not feature_instance:
+                raise HTTPException(status_code=404, detail="Feature not found.")
 
+            db.execute(room_type_feature.insert().values(room_type_id = data.id,feature_id = feature_instance.id))
+        
+    commit_db(db=db)
+        
+    for item in room_type_bed_type:
+        await insert_record(db=db, model=RoomTypeBedType, **item)
+        
+    return data
 
 @router.post("/update")
 async def update_room_type(
@@ -66,19 +94,21 @@ async def update_room_type(
     no_of_adult: Optional[int] = Form(None),
     no_of_child: Optional[int] = Form(None),
     features: Optional[List[str]] = Form(None),
-    bed_types_with_count: Optional[str] = Form(None),
-    images: Optional[List[UploadFile]] | None = File(None),
+    bed_types_with_count: Optional[List[str]] = Form(None),
+    images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update existing room type and its associations."""
+    """Update existing room type and its related associations."""
     
-    room_type = db.query(RoomTypeWithSize).filter(RoomTypeWithSize.id == room_type_id).first()
+    # Fetch existing record
+    room_type = await get_record_by_id(model = RoomTypeWithSize,db = db,id = room_type_id)
     if not room_type:
         raise HTTPException(status_code=404, detail="Room type not found")
 
+    # Collect updatable fields
     update_data = {}
-    if room_name:
+    if room_name != "string":
         update_data["room_name"] = room_name
     if base_price_per_night:
         update_data["base_price"] = base_price_per_night
@@ -87,36 +117,62 @@ async def update_room_type(
     if no_of_child:
         update_data["no_of_child"] = no_of_child
 
-    # Update associations
-    if features:
-        update_Room_Type_Feature(db, room_type.id, features)
-    if bed_types_with_count:
-        update_Room_Type_Bed_Type(db, room_type.id, bed_types_with_count)
+    # Handle image updates
+    if images:
+        sub_static_dir = "feature_images"
+        image_urls = await save_images(images, sub_static_dir)
+        update_data["images"] = image_urls
 
-    # Optionally handle image update via upsert
-    if images is not "":
-        await upsert_records(
-            db=db,
-            model=RoomTypeWithSize,
-            data=update_data,
-            image=images,
-            path="room_type_images"
-        )
-    else:
-        db.query(RoomTypeWithSize).filter(RoomTypeWithSize.id == room_type_id).update(update_data)
+   
+    # ----- Update Features -----
+
+    if features:  
+        features = features[0].split(',')
+        # Remove existing relations
+        db.execute(room_type_feature.delete().where(room_type_feature.c.room_type_id == room_type_id))
         db.commit()
+        
+        for feature in features:
+            print(feature)
+            feature = await get_record(db = db,model = Feature,feature_name = feature)
+            if not feature:
+                raise HTTPException(status_code=404, detail="Feature not found.")
 
+            db.execute(room_type_feature.insert().values(room_type_id = room_type_id,feature_id = feature.id))
+        
+            db.commit()
+        
+
+
+    # ----- Update Bed Types -----
+    
+    if bed_types_with_count != ['string']:
+        print(bed_types_with_count)
+        # Expecting something like ["King:2", "Queen:1"]
+        await delete_record(model = RoomTypeBedType,db =db,id=room_type_id)
+
+        room_type_bed_type = []
+        for btwc in bed_types_with_count:
+            
+            dicts = {}
+            bed_type_name, count = btwc.split(":")
+            
+            count = int(count)
+            bed_type = await get_record(db = db,model = BedType,bed_type_name = bed_type_name)
+            if not bed_type:
+                raise HTTPException(status_code=404, detail="Bed type not found")
+            dicts["bed_type_id"] = bed_type.id
+            dicts["num_of_beds"] = count
+            dicts["room_type_id"] = room_type_id
+            
+            room_type_bed_type.append(dicts)
+
+
+    if update_data:
+        updated_instance = await update_record(model = RoomTypeWithSize,db = db, id = room_type_id,**update_data)
+
+
+    # Refresh and return updated record
+    db.refresh(room_type)
     return room_type
-    
-    
-@router.get("/get")
-async def get_room_type(
-    room_type_id: int = Query(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Fetch room type with features and bed types using joined loading.
-    """
-    res = await get_records(db=db, model=RoomTypeWithSize, id=room_type_id)
-    return res
+
