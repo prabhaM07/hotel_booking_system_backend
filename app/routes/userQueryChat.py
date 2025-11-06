@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from typing import Optional
 from app.core.dependency import get_current_user
-from app.models.user import User
+from app.models.user import Users
 from app.utils import get_role
 
 settings = get_settings()
@@ -268,7 +268,7 @@ async def websocket_endpoint(websocket: WebSocket,cookie : str = None):
 
 
 @router.get("/chat", response_class=HTMLResponse)
-async def open_chat_page(request: Request,current_user: User = Depends(get_current_user),db : Session = Depends(get_db)):
+async def open_chat_page(request: Request,current_user: Users = Depends(get_current_user),db : Session = Depends(get_db)):
     
     role = get_role(db, current_user.role_id)
     
@@ -279,7 +279,7 @@ async def open_chat_page(request: Request,current_user: User = Depends(get_curre
 
 
 @router.get("/user/detail")
-async def get_cur_user_detail(request: Request,current_user: User = Depends(get_current_user)):
+async def get_cur_user_detail(request: Request,current_user: Users = Depends(get_current_user)):
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
@@ -288,7 +288,7 @@ async def get_cur_user_detail(request: Request,current_user: User = Depends(get_
 
 
 @router.get("/user/online")
-async def get_online_connection(current_user: User = Depends(get_current_user)):
+async def get_online_connection(current_user: Users = Depends(get_current_user)):
     result = manager.cur_online_connection()
     # Add admin online status for users to check
     admin_online = manager.is_admin_online()
@@ -301,19 +301,19 @@ async def get_online_connection(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/history/{user_id}")
-async def get_user_chat(user_id: int,current_user: User = Depends(get_current_user)):
+async def get_user_chat(user_id: int,current_user: Users = Depends(get_current_user)):
     history = await get_chat_history(user_id)
     return {"success": True, "user_id": user_id, "message_count": len(history), "messages": history}
 
 
 @router.delete("/history/{user_id}")
-async def del_user_chat(user_id: int,current_user: User = Depends(get_current_user)):
+async def del_user_chat(user_id: int,current_user: Users = Depends(get_current_user)):
     result = await del_user_history(user_id)
     return {"success": True, "user_id": str(user_id), **result}
 
 
 @router.get("/user/all")
-async def get_all_users(current_user: User = Depends(get_current_user)):
+async def get_all_users(current_user: Users = Depends(get_current_user)):
     """Get all users with their online status"""
     chats = await get_all_user()
     
@@ -326,7 +326,7 @@ async def get_all_users(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/read")
-async def mark_read(request: Request,current_user: User = Depends(get_current_user)):
+async def mark_read(request: Request,current_user: Users = Depends(get_current_user)):
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -349,19 +349,19 @@ async def mark_read(request: Request,current_user: User = Depends(get_current_us
 
 
 @router.get("/unseen/{user_id}")
-async def get_unseen_messages(user_id: int,current_user: User = Depends(get_current_user)):
+async def get_unseen_messages(user_id: int,current_user: Users = Depends(get_current_user)):
     count = await get_unseen_count(user_id)
     return {"success": True, "user_id": user_id, "unseen_count": count}
 
 
 @router.get("/participants")
-async def get_all_participants(current_user: User = Depends(get_current_user)):
+async def get_all_participants(current_user: Users = Depends(get_current_user)):
     participants = await get_conversation_participants()
     return {"success": True, "count": len(participants), "participants": participants}
 
 
 @router.post("/search")
-async def search_chat_messages(request: Request,current_user: User = Depends(get_current_user)):
+async def search_chat_messages(request: Request,current_user: Users = Depends(get_current_user)):
     from app.crud.userQueryChat import search_messages
     token = request.cookies.get("access_token")
     if not token:

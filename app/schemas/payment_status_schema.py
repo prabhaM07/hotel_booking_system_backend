@@ -14,19 +14,6 @@ class PaymentStatusEnum(str, Enum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
-
-class PaymentStatusResponse(BaseModel):
-    """Response model for Payment Status"""
-    id: int
-    status: PaymentStatusEnum
-    total_payment: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class PaymentStatusBase(BaseModel):
     """Base model for creating/updating Payment Status"""
     status: PaymentStatusEnum = Field(
@@ -55,37 +42,3 @@ class PaymentStatusBase(BaseModel):
         populate_by_name = True
         use_enum_values = True
 
-
-class PaymentStatusCreate(PaymentStatusBase):
-    """Model for creating a new Payment Status record"""
-    pass
-
-
-class PaymentStatusUpdate(BaseModel):
-    """Model for updating an existing Payment Status (all fields optional)"""
-    status: Optional[PaymentStatusEnum] = Field(
-        None,
-        alias="status",
-        description="Current payment status.",
-        example=PaymentStatusEnum.PAID
-    )
-    total_payment: Optional[int] = Field(
-        None,
-        alias="totalPayment",
-        description="Total payment amount.",
-        example=75000
-    )
-
-    # Reuse validator from base class
-    @field_validator("total_payment")
-    def validate_total_payment(cls, v):
-        if v is not None:
-            if v < 0:
-                raise ValueError("Total payment cannot be negative.")
-            if v > 999999999999:
-                raise ValueError("Total payment exceeds maximum allowed value.")
-        return v
-
-    class Config:
-        populate_by_name = True
-        use_enum_values = True

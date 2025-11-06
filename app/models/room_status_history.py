@@ -29,7 +29,7 @@ class RoomStatusHistory(Base):
         onupdate=func.now(),
         nullable=False
     )
-    changed_by = Column(Integer, ForeignKey("user.id"), nullable=True)
+    changed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     room = relationship(
         "Rooms",
@@ -38,8 +38,8 @@ class RoomStatusHistory(Base):
     )
 
     user = relationship(
-        "User",
-        back_populates="status_history_room",  
+        "Users",
+        back_populates="room_status_history",  
         lazy='joined'
     )
     

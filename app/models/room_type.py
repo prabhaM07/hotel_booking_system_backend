@@ -1,13 +1,13 @@
 # app/models/room_type.py
-from sqlalchemy import Column, Integer, String, DateTime, func, CheckConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Text, func, CheckConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
-from app.models.associations import room_type_feature
+from app.models.associations import room_type_features
 
 
-class RoomTypeWithSize(Base):
-    __tablename__ = "room_type_with_size"
+class RoomTypeWithSizes(Base):
+    __tablename__ = "room_type_with_sizes"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     room_name = Column(String(100), nullable=False, unique=True)
@@ -15,6 +15,7 @@ class RoomTypeWithSize(Base):
     base_price = Column(Integer, nullable=False)
     no_of_adult = Column(Integer, nullable=False)
     no_of_child = Column(Integer, nullable=False)
+    search_text = Column(Text) 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -23,24 +24,22 @@ class RoomTypeWithSize(Base):
         nullable=False
     )
     
-    # Relationship with Rooms (one-to-many)
-    rooms = relationship(
+    room = relationship(
         "Rooms",
         back_populates="room_type",
         lazy='joined'
     )
     
-    # Relationship with RoomTypeBedType
-    bed_types = relationship(
-        "RoomTypeBedType",
+    bed_type = relationship(
+        "RoomTypeBedTypes",
         back_populates="room_type",
         lazy='joined'
     )
     
-    features = relationship(
-        "Feature",
-        secondary=room_type_feature,
-        back_populates="room_types",
+    feature = relationship(
+        "Features",
+        secondary=room_type_features,
+        back_populates="room_type",
         lazy="joined"
     )
     

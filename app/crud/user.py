@@ -1,10 +1,9 @@
 import re
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.models.user import User
-from app.models.role import Role
-from app.models.user_profile import Profile
+from app.models.user import Users
+from app.models.role import Roles
+from app.models.user_profile import Profiles
 from app.schemas.user_schema import (
     UserBase, UserForgetPassword
 )
@@ -32,8 +31,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_user(db: Session, user_data: UserBase):
     # Check if user already exists
-    existing_user = db.query(User).filter(
-        (User.email == user_data.email) | (User.phone_no == user_data.phone_no)
+    existing_user = db.query(Users).filter(
+        (Users.email == user_data.email) | (Users.phone_no == user_data.phone_no)
     ).first()
     
     if existing_user:
@@ -43,7 +42,7 @@ def create_user(db: Session, user_data: UserBase):
             raise ValueError("Phone number already registered")
     
     # Look up the role by role_name
-    role = db.query(Role).filter(Role.role_name == user_data.role).first()
+    role = db.query(Roles).filter(Roles.role_name == user_data.role).first()
     if not role:
         raise ValueError(f"Role '{user_data.role}' not found in database")
     
@@ -51,7 +50,7 @@ def create_user(db: Session, user_data: UserBase):
     hashed_password = pwd_context.hash(user_data.password)
     if(user_data.role == "user"):
     # Create new user with role_id
-        new_user = User(
+        new_user = Users(
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             email=user_data.email,
@@ -60,7 +59,7 @@ def create_user(db: Session, user_data: UserBase):
             role_id=role.id 
         )
     else:
-        new_user = User(
+        new_user = Users(
             id = 0,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
@@ -77,25 +76,25 @@ def create_user(db: Session, user_data: UserBase):
 
 
 def get_user_by_email(db: Session, email: str):
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(Users).filter(Users.email == email).first()
     if not user:
         raise ValueError("User not found with this email.")
     return user
 
 
 def get_user_by_phoneno(db: Session, phone_no: int):
-    user = db.query(User).filter(User.phone_no == phone_no).first()
+    user = db.query(Users).filter(Users.phone_no == phone_no).first()
     if not user:
         raise ValueError("User not found with this phone number.")
     return user
 
 
 def list_users(db: Session):
-    return db.query(User).all()
+    return db.query(Users).all()
 
 
 def delete_user(db: Session, user_id: str):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(Users).filter(Users.id == user_id).first()
     if not user:
         return None
     db.delete(user)
@@ -108,7 +107,7 @@ def change_password(db: Session,user_data: UserForgetPassword):
     prev_hashed_password = get_password_hash(prev_pass)
     cur_hashed_password = get_password_hash(cur_pass)
     if not verify_password(cur_pass,prev_hashed_password):
-        User.password = cur_hashed_password
+        Users.password = cur_hashed_password
     db.commit()
     return user_data
 
@@ -116,9 +115,9 @@ def change_password(db: Session,user_data: UserForgetPassword):
 #  LOGIN & PASSWORD MANAGEMENT
 # -------------------------------
 
-def generate_tokens(db:Session , user_data: User) -> Dict[str, str]:
+def generate_tokens(db:Session , user_data: Users) -> Dict[str, str]:
     """Generate access and refresh tokens for a user."""
-    role = db.query(Role).filter(Role.id == user_data.role_id).first()
+    role = db.query(Roles).filter(Roles.id == user_data.role_id).first()
     role_name = role.role_name
     token_data = {
         "sub": str(user_data.id),
@@ -144,9 +143,9 @@ def login_by_phoneno_or_email(user_ : str, password : str, db: Session) -> Dict:
     
     existing_user = None
     if re.match(EMAIL_REGEX, user_) is not None:
-        existing_user = db.query(User).filter(User.email == user_).first()
+        existing_user = db.query(Users).filter(Users.email == user_).first()
     elif re.match(PHONE_REGEX, user_) is not None:
-        existing_user = db.query(User).filter(User.phone_no == user_).first()
+        existing_user = db.query(Users).filter(Users.phone_no == user_).first()
     
     if existing_user is None:
         raise ValueError("Invalid user Detail")
@@ -161,7 +160,7 @@ def login_by_phoneno_or_email(user_ : str, password : str, db: Session) -> Dict:
         "message": "Login successful",
         "access_token": tokens["access_token"],
         "refresh_token": tokens["refresh_token"],
-        "user_id": existing_user.id,  # Helpful for frontend
+        "user_id": existing_user.id,  
         "role": role if role else None
     })
 
@@ -174,7 +173,6 @@ def login_by_phoneno_or_email(user_ : str, password : str, db: Session) -> Dict:
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
         path="/"
-        # domain="localhost"  # Add if needed for cross-port requests
     )
 
     #  Cookie settings for refresh token
@@ -186,7 +184,6 @@ def login_by_phoneno_or_email(user_ : str, password : str, db: Session) -> Dict:
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
         path="/"
-        # domain="localhost"  # Add if needed for cross-port requests
     )
 
     return response   
@@ -195,7 +192,7 @@ def login_by_phoneno_or_email(user_ : str, password : str, db: Session) -> Dict:
 
 def refresh_access_token(db: Session, user_id: str) -> Dict[str, str]:
     """Generate new access token using refresh token."""
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(Users).filter(Users.id == user_id).first()
     role = get_role(db,user.role_id)
 
     if not user:
@@ -224,12 +221,12 @@ def update_profile(
     user_id: str, 
     user_profile_data: UserProfileBase, 
     image: Optional[Union[UploadFile, BytesIO]] = None,
-    image_url: Optional[str] = None  # Add this parameter
+    image_url: Optional[str] = None 
 ):
-    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    profile = db.query(Profiles).filter(Profiles.user_id == user_id).first()
 
     if not profile:
-        profile = Profile(user_id=user_id, updated_at=datetime.utcnow())
+        profile = Profiles(user_id=user_id, updated_at=datetime.utcnow())
         db.add(profile)
 
     if user_profile_data.DOB:
@@ -244,10 +241,9 @@ def update_profile(
             user_profile_data.address.pincode or ""
         )
 
-    # Store the pCloud URL instead of binary content
     if image_url:
-        profile.image_url = image_url  # Assuming you have an image_url column
-    elif image:  # Only if you still want to support direct binary upload
+        profile.image_url = image_url  
+    elif image:  
         content = image.file.read() if hasattr(image, 'file') else image.read()
         profile.image = content
 

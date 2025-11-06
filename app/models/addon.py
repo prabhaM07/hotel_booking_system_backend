@@ -20,9 +20,9 @@ class Addons(Base):
     )
 
     # Relationship with BookingAddon
-    booking_addons = relationship(
-        "BookingAddon",
-        back_populates="addons",
+    booking_addon = relationship(
+        "BookingAddons",
+        back_populates="addon",
         lazy='select'
     )
 

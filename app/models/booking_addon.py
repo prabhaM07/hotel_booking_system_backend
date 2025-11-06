@@ -4,8 +4,8 @@ from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
 
 
-class BookingAddon(Base):
-    __tablename__ = "booking_addon"
+class BookingAddons(Base):
+    __tablename__ = "booking_addons"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     booking_id = Column(
@@ -21,15 +21,15 @@ class BookingAddon(Base):
     quantity = Column(Integer, nullable=False, default=1)
 
     # Relationships
-    bookings = relationship(
+    booking = relationship(
         "Bookings",
-        back_populates="booking_addons",
+        back_populates="booking_addon",
         lazy='joined'
     )
     
-    addons = relationship(
+    addon = relationship(
         "Addons",
-        back_populates="booking_addons",
+        back_populates="booking_addon",
         lazy='joined'
     )
 

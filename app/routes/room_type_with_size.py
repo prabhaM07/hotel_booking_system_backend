@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, Form, File, HTTPException, UploadFile,Query
-from sqlalchemy.orm import Session,joinedload
-from typing import List, Optional,Dict
+from fastapi import APIRouter, Depends, Form, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
+from typing import List, Optional
 from app.core.dependency import get_db
 from app.core.dependency import get_current_user
-from app.models.user import User
-from app.models.room_type import RoomTypeWithSize
-from app.models.bed_type import BedType
-from app.models.features import Feature
-from app.models.roomType_bedType import RoomTypeBedType
+from app.models.user import Users
+from app.models.room_type import RoomTypeWithSizes
+from app.models.bed_type import BedTypes
+from app.models.features import Features
+from app.models.roomType_bedType import RoomTypeBedTypes
 from app.schemas.room_type_schema import  RoomTypeResponse
-from app.models.associations import room_type_feature
+from app.models.associations import room_type_features
 from app.crud.generic_crud import insert_record, delete_record, get_record, save_images,get_record_by_id,update_record,commit_db
 
 router = APIRouter(prefix="/roomtype", tags=["Room Types"])
@@ -24,7 +24,7 @@ async def add_room_type(
     bed_type_id_with_count : Optional[List[str]] = Form(...),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Add a new room type with one or more images.
@@ -41,7 +41,7 @@ async def add_room_type(
         )
     
     data = await insert_record(
-        model=RoomTypeWithSize,
+        model=RoomTypeWithSizes,
         db=db,
         **room_type_data.model_dump(),
         images = image_urls
@@ -56,7 +56,7 @@ async def add_room_type(
             
             count = int(count)
             
-            bed_type_instance = await get_record(db = db,model = BedType,id = int(bed_type_id))
+            bed_type_instance = await get_record(db = db,model = BedTypes,id = int(bed_type_id))
             
             if not bed_type_instance:
                 raise HTTPException(status_code=404, detail="Bed type not found")
@@ -72,18 +72,19 @@ async def add_room_type(
         
         for feature_id in feature_ids:
             print(feature_id)
-            feature_instance = await get_record(db = db,model = Feature,id = int(feature_id))
+            feature_instance = await get_record(db = db,model = Features,id = int(feature_id))
             
             if not feature_instance:
                 raise HTTPException(status_code=404, detail="Feature not found.")
 
-            db.execute(room_type_feature.insert().values(room_type_id = data.id,feature_id = feature_instance.id))
+            db.execute(room_type_features.insert().values(room_type_id = data.id,feature_id = feature_instance.id))
         
-    commit_db(db=db)
+   
         
     for item in room_type_bed_type:
-        await insert_record(db=db, model=RoomTypeBedType, **item)
+        await insert_record(db=db, model=RoomTypeBedTypes, **item)
         
+    commit_db(db=db)  
     return data
 
 @router.post("/update")
@@ -97,12 +98,12 @@ async def update_room_type(
     bed_types_with_count: Optional[List[str]] = Form(None),
     images: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """Update existing room type and its related associations."""
     
     # Fetch existing record
-    room_type = await get_record_by_id(model = RoomTypeWithSize,db = db,id = room_type_id)
+    room_type = await get_record_by_id(model = RoomTypeWithSizes,db = db,id = room_type_id)
     if not room_type:
         raise HTTPException(status_code=404, detail="Room type not found")
 
@@ -134,7 +135,7 @@ async def update_room_type(
         
         for feature in features:
             print(feature)
-            feature = await get_record(db = db,model = Feature,feature_name = feature)
+            feature = await get_record(db = db,model = Features,feature_name = feature)
             if not feature:
                 raise HTTPException(status_code=404, detail="Feature not found.")
 
@@ -149,7 +150,7 @@ async def update_room_type(
     if bed_types_with_count != ['string']:
         print(bed_types_with_count)
         # Expecting something like ["King:2", "Queen:1"]
-        await delete_record(model = RoomTypeBedType,db =db,id=room_type_id)
+        await delete_record(model = RoomTypeBedTypes,db =db,id=room_type_id)
 
         room_type_bed_type = []
         for btwc in bed_types_with_count:
@@ -158,7 +159,7 @@ async def update_room_type(
             bed_type_name, count = btwc.split(":")
             
             count = int(count)
-            bed_type = await get_record(db = db,model = BedType,bed_type_name = bed_type_name)
+            bed_type = await get_record(db = db,model = BedTypes,bed_type_name = bed_type_name)
             if not bed_type:
                 raise HTTPException(status_code=404, detail="Bed type not found")
             dicts["bed_type_id"] = bed_type.id
@@ -169,7 +170,7 @@ async def update_room_type(
 
 
     if update_data:
-        updated_instance = await update_record(model = RoomTypeWithSize,db = db, id = room_type_id,**update_data)
+        updated_instance = await update_record(model = RoomTypeWithSizes,db = db, id = room_type_id,**update_data)
 
 
     # Refresh and return updated record

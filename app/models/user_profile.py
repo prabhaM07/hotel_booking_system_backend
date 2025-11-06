@@ -15,16 +15,16 @@ from sqlalchemy.orm import relationship
 from sqlalchemy_utils import CompositeType
 
 
-class Profile(Base):
-    __tablename__ = "profile"
+class Profiles(Base):
+    __tablename__ = "profiles"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     user_id = Column(
         Integer,
-        ForeignKey("user.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
-    DOB = Column(Date, nullable=True)
+    dob = Column(Date, nullable=True)
     
     # Composite type for address
     address = Column(
@@ -44,8 +44,7 @@ class Profile(Base):
     image_url = Column(String, nullable=True) 
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now(), nullable=False)
 
-    # Relationship to User
-    user = relationship("User", back_populates="profile", uselist=False)
+    user = relationship("Users", back_populates="profile", uselist=False)
 
     __table_args__ = (
         CheckConstraint("char_length((address).city) <= 50", name="check_city_length"),

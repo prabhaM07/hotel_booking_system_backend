@@ -12,7 +12,7 @@ class Payments(Base):
     
     booking_id = Column(
         Integer,
-        ForeignKey("bookings.id", ondelete="CASCADE"),  # Match the exact table name
+        ForeignKey("bookings.id", ondelete="CASCADE"),  
         nullable=False
     )
     

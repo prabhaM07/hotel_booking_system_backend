@@ -9,28 +9,28 @@ from app.models.Enum import BookingStatusEnum, PaymentStatusEnum, RoomStatusEnum
 # ============================================
 # ASSOCIATION TABLES (import BEFORE models that use them)
 # ============================================
-from app.models.associations import room_type_feature
-from app.models.associations import role_scope
+from app.models.associations import room_type_features
+from app.models.associations import role_scopes
 
 # ============================================
 # INDEPENDENT TABLES (no foreign keys)
 # ============================================
-from app.models.role import Role
+from app.models.role import Roles
 from app.models.scope import Scopes
-from app.models.bed_type import BedType
-from app.models.features import Feature
-from app.models.floor import Floor
+from app.models.bed_type import BedTypes
+from app.models.features import Features
+from app.models.floor import Floors
 from app.models.addon import Addons
 
 # ============================================
 # RoomTypeWithSize must come AFTER room_type_feature
 # ============================================
-from app.models.room_type import RoomTypeWithSize
+from app.models.room_type import RoomTypeWithSizes
 
 # ============================================
 # User must come before Profile and Bookings
 # ============================================
-from app.models.user import User
+from app.models.user import Users
 
 # ============================================
 # Rooms depends on RoomTypeWithSize and Floor
@@ -54,6 +54,7 @@ from app.models.bookings import Bookings
 # ============================================
 from app.models.payment import Payments
 
+from app.models.rating_reviews import RatingsReviews
 
 from app.models.refund import Refunds
 # ============================================
@@ -73,14 +74,14 @@ from app.models.refund_status_history import RefundStatusHistory
 # ============================================
 # Profile depends on User
 # ============================================
-from app.models.user_profile import Profile
+from app.models.user_profile import Profiles
 
 # ============================================
 # Junction tables and other dependent models
 # ============================================
-from app.models.roomType_bedType import RoomTypeBedType
-from app.models.booking_addon import BookingAddon
-from app.models.reschedule import Reschedule
+from app.models.roomType_bedType import RoomTypeBedTypes
+from app.models.booking_addon import BookingAddons
+from app.models.reschedule import Reschedules
 
 __all__ = [
     "Base",
@@ -89,31 +90,32 @@ __all__ = [
     "PaymentStatusEnum", 
     "RoomStatusEnum",
     # Association tables
-    "room_type_feature",
-    "role_scope",
+    "room_type_features",
+    "role_scopes",
     # Independent models
-    "Role",
+    "Roles",
     "Scopes",
-    "BedType",
-    "Feature",
-    "Floor",
+    "BedTypes",
+    "Features",
+    "Floors",
     "Addons",
     # Core models in dependency order
-    "RoomTypeWithSize",
-    "User",
+    "RoomTypeWithSizes",
+    "Users",
     "Rooms",
     "Bookings",
     "Payments",
+    "RatingsReviews",
     "Refunds",
     "PaymentStatus",
     "BookingStatusHistory",
     "PaymentStatusHistory",
     "RoomStatusHistory",
     "RefundStatusHistory",
-    "Profile",
+    "Profiles",
     # Junction tables
-    "RoomTypeBedType",
-    "BookingAddon",
-    "Reschedule",
+    "RoomTypeBedTypes",
+    "BookingAddons",
+    "Reschedules",
 
 ]

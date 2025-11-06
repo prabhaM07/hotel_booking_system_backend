@@ -5,12 +5,12 @@ from bson import ObjectId
 from app.utils import convertTOString,formatDatetime
 from app.core.database_mongo import chat_collection2
 from app.schemas.general_query_schema import GeneralQueryResponseSchema,UserQuerySchema
-from app.models.user import User
+from app.models.user import Users
 
 async def create_query(query: UserQuerySchema,request: Request,db: Session):
     user_id = request.cookies.get("user_id")
     print(type(user_id))
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(Users).filter(Users.id == user_id).first()
     data = query.model_dump()
     data["email"] = user.email
     data["phone_no"] = user.phone_no

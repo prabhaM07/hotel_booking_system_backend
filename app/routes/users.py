@@ -8,7 +8,8 @@ from app.core.dependency import get_db
 from app.crud import user
 from app.auth.jwt_handler import verify_refresh_token
 from app.core.dependency import get_current_user
-from app.models.user import User
+from app.models.user import Users
+from app.models.user_profile import Profiles
 from typing import Optional
 from app.schemas.user_profile_schema import UserProfileBase, Address
 from datetime import datetime
@@ -126,7 +127,7 @@ def refresh_token(
 @router.get("/users")
 def get_all_users(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """Get all users - Protected endpoint (requires cookie or header token)"""
     
@@ -134,7 +135,7 @@ def get_all_users(
 
 
 @router.get("/me")
-def get_current_user_Info(db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+def get_current_user_Info(db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
     
     role = user.get_role(db,current_user.role_id)
 
@@ -152,7 +153,7 @@ def get_current_user_Info(db: Session = Depends(get_db),current_user: User = Dep
 @router.post("/logout")
 def logout(
     response: Response,
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """Logout - Clears authentication cookies"""
     # Delete access token cookie
@@ -177,7 +178,7 @@ def logout(
 def change_user_password(
     user_data: UserForgetPassword,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """Change user password - Protected endpoint"""
     try:
@@ -194,7 +195,7 @@ def change_user_password(
 def delete_user_by_id(
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """Delete user by ID - Protected endpoint"""
     result = user.delete_user(db, user_id)
@@ -232,7 +233,7 @@ async def update_user_profile(
     pincode: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     # Prevent other users from modifying this profile
     if str(current_user.id) != user_id:
@@ -290,18 +291,17 @@ async def update_user_profile(
         updated_at=updated_profile.updated_at
     )
 
-from app.models.user_profile import Profile
 
 @router.get("/{user_id}/url")
 async def get_profile_image_url(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     """
     Get the pCloud URL for the profile image (returns JSON with URL)
     """
-    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    profile = db.query(Profiles).filter(Profiles.user_id == user_id).first()
     
     if not profile or not profile.image_url:
         raise HTTPException(status_code=404, detail="Profile image not found")
@@ -321,9 +321,9 @@ async def view_profile_image(
     request: Request,
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
-    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    profile = db.query(Profiles).filter(Profiles.user_id == user_id).first()
 
     if not profile or not profile.image_url:
         raise HTTPException(status_code=404, detail="Profile image not found")

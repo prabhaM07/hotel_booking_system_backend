@@ -1,5 +1,5 @@
 # app/models/rooms.py
-from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, CheckConstraint, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime, Text, func, ForeignKey, CheckConstraint, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
 from app.models.Enum import RoomStatusEnum
@@ -11,12 +11,12 @@ class Rooms(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     room_type_id = Column(
         Integer,
-        ForeignKey("room_type_with_size.id", ondelete="CASCADE"),
+        ForeignKey("room_type_with_sizes.id", ondelete="CASCADE"),
         nullable=False
     )
     floor_id = Column(
         Integer,
-        ForeignKey("floor.id", ondelete="CASCADE"),
+        ForeignKey("floors.id", ondelete="CASCADE"),
         nullable=False
     )
     room_no = Column(Integer, nullable=False, unique=True)
@@ -26,7 +26,7 @@ class Rooms(Base):
         nullable=False,
         default="available"
     )
-        
+    search_text = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -36,18 +36,24 @@ class Rooms(Base):
     )
 
     room_type = relationship(
-        "RoomTypeWithSize",
-        back_populates="rooms",
+        "RoomTypeWithSizes",
+        back_populates="room",
         lazy="joined"
     )
     
     floor = relationship(
-        "Floor",
-        back_populates="rooms",
+        "Floors",
+        back_populates="room",
         lazy='joined'
     )
     
-    bookings = relationship(
+    ratingReview = relationship(
+        "RatingsReviews",
+        back_populates="room",
+        lazy="joined"
+    )
+    
+    booking = relationship(
         "Bookings",
         back_populates="room",
         lazy='joined'

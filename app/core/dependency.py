@@ -1,6 +1,6 @@
 from app.core.database_postgres import SessionLocal
 from app.auth.jwt_bearer import JWTBearer 
-from app.models.user import User
+from app.models.user import Users
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -20,7 +20,7 @@ def get_db():
 
 def get_current_user(user_id: int = Depends(jwt_bearer),db:Session = Depends(get_db)):
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(Users).filter(Users.id == user_id).first()
     
     if user is None:
         raise HTTPException(

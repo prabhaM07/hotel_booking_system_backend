@@ -2,13 +2,13 @@ from sqlalchemy import Column, String, BigInteger, DateTime, func, CheckConstrai
 from app.core.database_postgres import Base
 from sqlalchemy.orm import relationship
 
-class User(Base):
-    __tablename__ = "user"
+class Users(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     role_id = Column(
         Integer,
-        ForeignKey("role.id", ondelete="CASCADE"),
+        ForeignKey("roles.id", ondelete="CASCADE"),
         nullable=False
     )
     first_name = Column(String(50), nullable=False)
@@ -19,7 +19,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     profile = relationship(
-        "Profile",  
+        "Profiles",  
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
@@ -27,19 +27,19 @@ class User(Base):
         lazy='joined'
     )
 
-    bookings = relationship(
+    booking = relationship(
         "Bookings",
         back_populates="user",
         lazy='joined'
     )
     
-    status_history_room = relationship(
+    room_status_history = relationship(
         "RoomStatusHistory",
         back_populates="user",  
         lazy='joined'
     )
     
-    role = relationship("Role", back_populates="users", uselist=False)
+    role = relationship("Roles", back_populates="user", uselist=False)
 
     __table_args__ = (
         CheckConstraint(

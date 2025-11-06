@@ -5,16 +5,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from app.models.Enum import BookingStatusEnum, PaymentStatusEnum, RefundStatusEnum, RoomStatusEnum
-from app.models.reschedule import Reschedule
+from app.models.reschedule import Reschedules
 from app.models.rooms import Rooms
-from app.models.user import User
+from app.models.user import Users
 from app.models.bookings import Bookings
 from app.models.booking_status_history import BookingStatusHistory
-from app.models.room_type import RoomTypeWithSize
+from app.models.room_type import RoomTypeWithSizes
 from app.models.payment import Payments
 from app.models.refund import Refunds
 from app.models.addon import Addons
-from app.models.booking_addon import BookingAddon
+from app.models.booking_addon import BookingAddons
 from app.schemas.payment_schema import PaymentBase
 from app.schemas.status_history_schema import BookingStatusHistoryBase
 from app.schemas.booking_schema import BookingBase
@@ -30,7 +30,7 @@ async def book_room(
     booking: BookingBase,
     addon_list: Optional[List[str]] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     """Add a new room record"""
     try:
@@ -38,7 +38,7 @@ async def book_room(
         if not room_instance:
             raise HTTPException(status_code=404, detail="Room not found")
 
-        root_type_instance = await get_record_by_id(db=db, model=RoomTypeWithSize, id=room_instance.room_type_id)
+        root_type_instance = await get_record_by_id(db=db, model=RoomTypeWithSizes, id=room_instance.room_type_id)
         if not root_type_instance:
             raise HTTPException(status_code=404, detail="Room type not found")
 
@@ -77,7 +77,7 @@ async def book_room(
                     "addon_id": addon_id,
                     "quantity": quantity
                 }
-                await insert_record(db=db, model=BookingAddon, **dicts)
+                await insert_record(db=db, model=BookingAddons, **dicts)
 
         total_amount = room_amount + addon_amount
         payment_data_base = PaymentBase(
@@ -110,7 +110,7 @@ async def cancel_booking(
     booking_id: int = Form(...),
     reason: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     try:
         existing_booking = db.query(Bookings).filter(Bookings.id == booking_id).first()
@@ -180,7 +180,7 @@ async def cancel_booking(
 async def availabile_date_of_room(
     room_id: int = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     try:
         available_dates = available_date_of_room(room_id=room_id, db=db, model=Bookings)
@@ -199,7 +199,7 @@ async def reschdule_bookings(
     check_in: date = Form(...),
     check_out: date = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user)
 ):
     try:
         if check_in >= check_out:
@@ -216,7 +216,7 @@ async def reschdule_bookings(
         if date.today() > booking_instance.check_in - timedelta(days=cutoff_days):
             raise HTTPException(status_code=400, detail="Too late to reschedule this booking")
 
-        already_rescheduled = db.query(Reschedule).filter(Reschedule.booking_id == booking_id).first()
+        already_rescheduled = db.query(Reschedules).filter(Reschedules.booking_id == booking_id).first()
         if already_rescheduled:
             raise HTTPException(status_code=400, detail="This booking has already been rescheduled once")
 
@@ -227,12 +227,12 @@ async def reschdule_bookings(
         if available:
             booking_instance.check_in = check_in
             booking_instance.check_out = check_out
-            reschedule_record = await insert_record(db=db, model=Reschedule, booking_id=booking_id)
+            reschedule_record = await insert_record(db=db, model=Reschedules, booking_id=booking_id)
             await commit_db(db)
             return reschedule_record
         else:
             room_instance = await get_record_by_id(db=db,model=Rooms,id = booking_instance.room_id)
-            room_type_instance = await get_record_by_id(db=db,model=RoomTypeWithSize,id = room_instance.room_type_id)
+            room_type_instance = await get_record_by_id(db=db,model=RoomTypeWithSizes,id = room_instance.room_type_id)
             return available_rooms(db=db, check_in=check_in, check_out=check_out,no_of_adult = room_type_instance.no_of_adult,no_of_child=room_type_instance.no_of_child)
 
     except SQLAlchemyError as e:
@@ -243,3 +243,19 @@ async def reschdule_bookings(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.get("/filter")
+async def whole_filter(
+    room_price : Optional[int] = Query(None),
+    floor_no : Optional[int] = Query(None),
+    room_type_name : Optional[str] = Query(None),
+    ratings : Optional[int] = Query(None),
+    features : Optional[List[str]] = Query(None),
+    bet_type_names : Optional[List[str]] = Query(None),
+    check_in: Optional[date] = Query(None),
+    check_out: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
+): 
+    result = await whole_filter(db = db, room_price = room_price,floor_no=floor_no,room_type_name = room_type_name,ratings=ratings,features=features,bet_type_names=bet_type_names,check_in=check_in,check_out=check_out)
+    return result

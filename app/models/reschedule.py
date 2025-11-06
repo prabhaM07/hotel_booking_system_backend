@@ -4,8 +4,8 @@ from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
 
 
-class Reschedule(Base):
-    __tablename__ = "reschedule"
+class Reschedules(Base):
+    __tablename__ = "reschedules"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     
@@ -18,7 +18,7 @@ class Reschedule(Base):
 
     booking = relationship(
         "Bookings",
-        back_populates="reschedules",
+        back_populates="reschedule",
         lazy='joined'
     )
     

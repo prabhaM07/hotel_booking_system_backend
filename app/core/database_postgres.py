@@ -15,7 +15,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 def init_db():
-    from app.models.role import Role
+    from app.models.role import Roles
     
     
     print("Starting database initialization...")
@@ -28,18 +28,18 @@ def init_db():
         default_role_names = ["admin", "user", "staff"]
         for role_name in default_role_names:
             # Query for existence
-            exists = db.query(Role).filter_by(role_name=role_name).first()
+            exists = db.query(Roles).filter_by(role_name=role_name).first()
             if not exists:
-                db.add(Role(role_name=role_name))
+                db.add(Roles(role_name=role_name))
                 print(f"✓ Added role: {role_name}")
             else:
                 print(f"✓ Role already exists: {role_name}")
         db.commit()
 
         # Display roles
-        roles_count = db.query(Role).count()
+        roles_count = db.query(Roles).count()
         print(f"✓ Total roles in database: {roles_count}")
-        all_roles = db.query(Role).all()
+        all_roles = db.query(Roles).all()
         for role in all_roles:
             print(f"  - Role: {role.role_name} (ID: {role.id})")
 

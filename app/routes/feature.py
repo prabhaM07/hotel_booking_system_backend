@@ -2,8 +2,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.features_schema import FeatureSchema
-from app.models.features import Feature
-from app.models.user import User
+from app.models.features import Features
+from app.models.user import Users
 from app.core.dependency import get_current_user, get_db
 from app.crud.generic_crud import (
     insert_record,
@@ -23,7 +23,7 @@ async def add_feature(
     feature_name: str = Form(...),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     sub_static_dir = "feature_images"
     image_url = await save_image(image, sub_static_dir) if image else None
@@ -34,7 +34,7 @@ async def add_feature(
     )
     new_feature = await insert_record(
         db=db,
-        model=Feature,
+        model=Features,
         **feature_data.model_dump(),
     )
 
@@ -47,9 +47,9 @@ async def update_feature_image(
     feature_id: int = Form(...),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
-    instance = await get_record(model=Feature, db=db, id=feature_id)
+    instance = await get_record(model=Features, db=db, id=feature_id)
     if not instance:
         raise HTTPException(status_code=404, detail="Feature not found")
 
@@ -67,7 +67,7 @@ async def update_feature_image(
 
         updated_feature = await update_record(
             id=feature_id,
-            model=Feature,
+            model=Features,
             db=db,
             image=image_url,
         )
@@ -81,11 +81,11 @@ async def update_feature_image(
 async def delete_feature(
     feature_id: int = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     deleted_feature = await delete_record(
         id=feature_id,
-        model=Feature,
+        model=Features,
         db=db,
     )
     return {"message": f"Feature with ID {feature_id} deleted successfully"}
@@ -96,9 +96,9 @@ async def delete_feature(
 async def get_feature(
     feature_name: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
-    feature = await get_record(model=Feature, db=db, feature_name=feature_name)
+    feature = await get_record(model=Features, db=db, feature_name=feature_name)
     if not feature:
         raise HTTPException(status_code=404, detail="Feature not found")
     return feature

@@ -4,17 +4,17 @@ from app.core.database_postgres import Base
 from sqlalchemy.orm import relationship
 
 # Many-to-many association tables
-room_type_feature = Table(
-    'room_type_feature',
+room_type_features = Table(
+    'room_type_features',
     Base.metadata,
-    Column('room_type_id', Integer, ForeignKey('room_type_with_size.id',ondelete="CASCADE"), primary_key=True),
-    Column('feature_id', Integer, ForeignKey('feature.id',ondelete="CASCADE"), primary_key=True)
+    Column('room_type_id', Integer, ForeignKey('room_type_with_sizes.id',ondelete="CASCADE"), primary_key=True),
+    Column('feature_id', Integer, ForeignKey('features.id',ondelete="CASCADE"), primary_key=True)
     
 )
 
-role_scope = Table(
-    'role_scope',
+role_scopes = Table(
+    'role_scopes',
     Base.metadata,
-    Column('role_id', Integer, ForeignKey('role.id',ondelete="CASCADE"), primary_key=True),
-    Column('scope_id', Integer, ForeignKey('scope.id',ondelete="CASCADE"), primary_key=True)
+    Column('role_id', Integer, ForeignKey('roles.id',ondelete="CASCADE"), primary_key=True),
+    Column('scope_id', Integer, ForeignKey('scopes.id',ondelete="CASCADE"), primary_key=True)
 )

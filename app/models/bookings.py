@@ -11,7 +11,7 @@ class Bookings(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     user_id = Column(
         Integer,
-        ForeignKey("user.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
     room_id = Column(
@@ -42,20 +42,26 @@ class Bookings(Base):
 
     # Relationships
     user = relationship(
-        "User",
-        back_populates="bookings",
+        "Users",
+        back_populates="booking",
         lazy='joined'
     )
     
     room = relationship(
         "Rooms",
-        back_populates="bookings",
+        back_populates="booking",
         lazy='joined'
     )
     
-    booking_addons = relationship(
-        "BookingAddon",
-        back_populates="bookings",
+    ratingReview = relationship(
+        "RatingsReviews",
+        back_populates="booking",
+        lazy="joined"
+    )
+    
+    booking_addon = relationship(
+        "BookingAddons",
+        back_populates="booking",
         lazy='joined',
         cascade="all, delete-orphan"
     )
@@ -73,9 +79,8 @@ class Bookings(Base):
         lazy='joined'
     )
     
-    # Reschedule relationships
-    reschedules = relationship(
-        "Reschedule",
+    reschedule = relationship(
+        "Reschedules",
         back_populates="booking",
         lazy='joined',
         cascade="all, delete-orphan"

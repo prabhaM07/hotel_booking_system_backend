@@ -5,10 +5,10 @@ from typing import Type
 from app.crud.generic_crud import get_records
 from fastapi import HTTPException
 from requests import Session
-from app.models.Enum import RoomStatusEnum,BookingStatusEnum
+from app.models.Enum import BookingStatusEnum
 from app.models.bookings import Bookings
 from app.models.rooms import Rooms
-from app.models.room_type import RoomTypeWithSize
+from app.models.room_type import RoomTypeWithSizes
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -75,12 +75,12 @@ def available_rooms(db: Session, check_in: date, check_out: date, no_of_child: i
         booked_room = (
             db.query(Bookings)
             .join(Rooms, Bookings.room_id == Rooms.id)
-            .join(RoomTypeWithSize, Rooms.room_type_id == RoomTypeWithSize.id)
+            .join(RoomTypeWithSizes, Rooms.room_type_id == RoomTypeWithSizes.id)
             .filter(
                 Bookings.check_in < check_out,
                 Bookings.check_out > check_in,
-                RoomTypeWithSize.no_of_adult >= no_of_adult,
-                RoomTypeWithSize.no_of_child >= no_of_child
+                RoomTypeWithSizes.no_of_adult >= no_of_adult,
+                RoomTypeWithSizes.no_of_child >= no_of_child
             )
             .distinct()
             .all()

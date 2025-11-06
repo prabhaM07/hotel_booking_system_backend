@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPExcep
 from sqlalchemy.orm import Session
 from app.schemas.addon_schema import AddonSchema
 from app.models.addon import Addons
-from app.models.user import User
+from app.models.user import Users
 from app.core.dependency import get_current_user, get_db
 from app.crud.generic_crud import (
     insert_record,
@@ -24,7 +24,7 @@ async def add_addon(
     base_price: int = Form(...),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     sub_static_dir = "addon_images"
     image_url = await save_image(image, sub_static_dir) if image else None
@@ -49,7 +49,7 @@ async def update_addon_image(
     addon_id: int = Form(...),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     instance = await get_record(model=Addons, db=db, id=addon_id)
     if not instance:
@@ -85,7 +85,7 @@ async def update_addon_details(
     addon_name: Optional[str] = Form(None),
     base_price: Optional[int] = Form(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     instance = await get_record(model=Addons, db=db, id=addon_id)
     if not instance:
@@ -112,7 +112,7 @@ async def update_addon_details(
 async def delete_addon(
     addon_id: int = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     deleted_addon = await delete_record(
         id=addon_id,
@@ -127,7 +127,7 @@ async def delete_addon(
 async def get_addon(
     addon_name: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     addon = await get_record(model=Addons, db=db, addon_name=addon_name)
     if not addon:

@@ -4,8 +4,8 @@ from sqlalchemy.orm import relationship
 from app.core.database_postgres import Base
 
 
-class Floor(Base):
-    __tablename__ = "floor"
+class Floors(Base):
+    __tablename__ = "floors"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     floor_no = Column(Integer, nullable=False, unique=True)
@@ -17,13 +17,12 @@ class Floor(Base):
         nullable=False
     )
 
-    # Relationships
-    rooms = relationship(
+    room = relationship(
         "Rooms",
         back_populates="floor",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy='select'
+        lazy='joined'
     )
 
     __table_args__ = (

@@ -2,8 +2,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, Form
 from sqlalchemy.orm import Session
 from app.schemas.floor_schema import FloorBase
-from app.models.floor import Floor
-from app.models.user import User
+from app.models.floor import Floors
+from app.models.user import Users
 from app.core.dependency import get_current_user, get_db
 from app.crud.generic_crud import insert_record, update_record, delete_record, get_record
 
@@ -15,13 +15,13 @@ router = APIRouter(prefix="/floor", tags=["Floors"])
 async def add_floor(
     floor_no: int = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     floor_data = FloorBase(floorNo=floor_no)
 
     new_floor = await insert_record(
         db=db,
-        model=Floor,
+        model=Floors,
         **floor_data.model_dump(),
     )
     return new_floor
@@ -32,12 +32,12 @@ async def add_floor(
 async def delete_floor(
     floor_no: int = Query(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     # Find the record first
     record = await get_record(
         db=db,
-        model=Floor,
+        model=Floors,
         floor_no=floor_no
     )
 
@@ -46,7 +46,7 @@ async def delete_floor(
 
     await delete_record(
         db=db,
-        model=Floor,
+        model=Floors,
         id=record.id
     )
 
@@ -58,11 +58,11 @@ async def delete_floor(
 async def get_floor(
     floor_no: int = Query(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Users = Depends(get_current_user),
 ):
     record = await get_record(
         db=db,
-        model=Floor,
+        model=Floors,
         floor_no=floor_no
     )
 

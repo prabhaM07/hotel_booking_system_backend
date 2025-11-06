@@ -54,13 +54,4 @@ class RoomsBase(BaseModel):
         populate_by_name = True
 
 
-class RoomTypeResponse(BaseModel):
-    id: int
-    room_name: str
-    base_price: int
-    no_of_adult: int
-    no_of_child: int
-
-    model_config = {"from_attributes": True}
-
 
